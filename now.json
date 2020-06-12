@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "simple-rest-api-server",
+  "name": "V4.0",
   "builds": [
     { "src": "server.js", "use": "@now/node-server" }
   ],
