@@ -1,8 +1,7 @@
-import { ajax } from './ajax.js';
 // State
 let todos = [];
-const TODOS_LS = "toDos";
 const $body = document.querySelector("body");
+console.dir(axios)
 
 class Body {
   constructor(domNode) {
@@ -22,9 +21,9 @@ class Body {
   init() {
     this._domNodeSettings();
     this._bindEvents();
-    ajax.get("/todos")
+    axios.get("/todos")
     .then(_todos => {
-      todos = _todos.sort((a, b) => a.id - b.id);
+      todos = _todos.data.sort((a, b) => a.id - b.id);
       todos.forEach(todo => {
         this.paintTodo(todo);
       });
@@ -53,7 +52,6 @@ class Body {
   }
   handleKeyUp(e) {
     const { enter } = Body.keyCode;
-    const { completeAllNode } = this;
     if (e.keyCode !== enter || e.target.value.trim() === "") return;
     e.target.value = e.target.value.trim();
     const toDoObj = {
@@ -61,7 +59,7 @@ class Body {
       content: e.target.value,
       completed: false,
     }
-    ajax.post("/todos", toDoObj)
+    axios.post("/todos", toDoObj)
     .then(_todo => {
       todos = [...todos, toDoObj];
       this.SaveTodos()
@@ -101,7 +99,7 @@ class Body {
     todosNode.appendChild($li);
   }
   handleToggle(e) {
-    const { navNode, todosNode, completeAllNode } = this;
+    const { navNode, todosNode } = this;
     if(!e.target.matches(".nav > li")) return
     const $active = navNode.querySelector(".active");
     if($active === e.target) return;
@@ -119,24 +117,22 @@ class Body {
         activeTodos.forEach(todo => {
           this.paintTodo(todo);
         });
-        completeAllNode.checked = false;
         break;
       case "completed":
         const completeTodos = todos.filter(todo => todo.completed);
         completeTodos.forEach(todo => {
           this.paintTodo(todo);
         });
-        completeAllNode.checked = true;
         break;
     }
+    this.SaveTodos();
   }
   handleCheck(e) {
-    const { completeAllNode } = this;
     if (!e.target.matches("li > input.checkbox")) return;
-    ajax.patch(`/todos/${e.target.parentNode.id}`, { completed })
+    axios.patch(`/todos/${e.target.parentNode.id}`, { completed })
     .then(
       _todo => {
-        todos = todos.map(todo => todo = todo.id === parseInt(e.target.parentNode.id) ? {...todo, completed: !todo.completed}: todo);
+        todos = _todo.data;
         this.SaveTodos();
         this.changeToggle();
       }
@@ -146,9 +142,9 @@ class Body {
   handleDeleteTodo(e) {
     const { todosNode } = this;
     if (!e.target.matches("li > i")) return;
-    ajax.delete(`/todos/${e.parentNode.id}`)
-    .then(() => {
-      todos = todos.filter(todo => todo.id !== parseInt(e.target.parentNode.id));
+    axios.delete(`/todos/${e.target.parentNode.id}`)
+    .then(_todos => {
+      todos = _todos.data.filter(todo => todo.id !== parseInt(e.target.parentNode.id));
       this.SaveTodos();
     })
     .catch(err => console.error(err));
@@ -160,9 +156,9 @@ class Body {
   handleCheckAll(e) {
     const { todosNode } = this;
     const completed = e.target.checked;
-    ajax.patch("/todos", { completed })
+    axios.patch("/todos", { completed })
     .then( _todo => {
-      todos = _todo;
+      todos = _todo.data;
       this.SaveTodos();
       this.changeToggle();
     })
@@ -172,14 +168,13 @@ class Body {
     });
   }
   handleClearTodos(e) {
-    const { todosNode, completeAllNode } = this;
+    const { todosNode } = this;
     const checkboxAll = todosNode.querySelectorAll("li input.checkbox")
     checkboxAll.forEach(item => item.checked ? item.parentNode.classList.toggle("bye") : !item.checked);
-    ajax.delete(`/todos/completed`)
+    axios.delete(`/todos/completed`)
     .then(_todos => {
-      todos = _todos;
+      todos = _todos.data;
       this.SaveTodos();
-      completeAllNode.checked = false;
     })
     .catch(err => console.error(err));
     setTimeout(() => {
