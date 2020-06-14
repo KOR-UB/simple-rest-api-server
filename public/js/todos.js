@@ -22,13 +22,15 @@ class Body {
   init() {
     this._domNodeSettings();
     this._bindEvents();
-    ajax.get("/todos", _todos => {
+    ajax.get("/todos")
+    .then(_todos => {
       todos = _todos.sort((a, b) => a.id - b.id);
       todos.forEach(todo => {
         this.paintTodo(todo);
       });
       this.SaveTodos();
-    });
+    })
+    .catch(err => console.error(err));
   }
   _domNodeSettings() {
     const { bodyNode, footerNode } = this;
@@ -51,6 +53,7 @@ class Body {
   }
   handleKeyUp(e) {
     const { enter } = Body.keyCode;
+    const { completeAllNode } = this;
     if (e.keyCode !== enter || e.target.value.trim() === "") return;
     e.target.value = e.target.value.trim();
     const toDoObj = {
@@ -58,11 +61,13 @@ class Body {
       content: e.target.value,
       completed: false,
     }
-    ajax.post("/todos", toDoObj, _todo => {
+    ajax.post("/todos", toDoObj)
+    .then(_todo => {
       todos = [...todos, toDoObj];
       this.SaveTodos()
       this.paintTodo(toDoObj);
-    });
+    })
+    .catch(err => console.error(err));
     e.target.value = "";
   }
   _idGenerator() {
@@ -128,20 +133,25 @@ class Body {
   handleCheck(e) {
     const { completeAllNode } = this;
     if (!e.target.matches("li > input.checkbox")) return;
-    ajax.patch(`/todos/${e.target.parentNode.id}`, { completed }, _todo => {
-      todos = todos.map(todo => todo = todo.id === parseInt(e.target.parentNode.id) ? {...todo, completed: !todo.completed}: todo);
-      this.SaveTodos();
-      this.changeToggle();
-    });
-    completeAllNode.checked = todos.every(todo => todo.completed) ? true : false;
+    ajax.patch(`/todos/${e.target.parentNode.id}`, { completed })
+    .then(
+      _todo => {
+        todos = todos.map(todo => todo = todo.id === parseInt(e.target.parentNode.id) ? {...todo, completed: !todo.completed}: todo);
+        this.SaveTodos();
+        this.changeToggle();
+      }
+    )
+    .catch(err => console.error(err));
   }
   handleDeleteTodo(e) {
     const { todosNode } = this;
     if (!e.target.matches("li > i")) return;
-    ajax.delete(`/todos/${e.parentNode.id}`, () => {
+    ajax.delete(`/todos/${e.parentNode.id}`)
+    .then(() => {
       todos = todos.filter(todo => todo.id !== parseInt(e.target.parentNode.id));
       this.SaveTodos();
-    });
+    })
+    .catch(err => console.error(err));
     e.target.parentNode.classList.toggle("bye");
     setTimeout(() => {
       todosNode.removeChild(e.target.parentNode);
@@ -150,11 +160,13 @@ class Body {
   handleCheckAll(e) {
     const { todosNode } = this;
     const completed = e.target.checked;
-    ajax.patch("/todos", { completed }, _todo => {
+    ajax.patch("/todos", { completed })
+    .then( _todo => {
       todos = _todo;
       this.SaveTodos();
       this.changeToggle();
-    });
+    })
+    .catch(err => console.error(err));
     todosNode.querySelectorAll("li input.checkbox").forEach(item => {
       item.checked = item.checked = e.target.checked;
     });
@@ -163,18 +175,20 @@ class Body {
     const { todosNode, completeAllNode } = this;
     const checkboxAll = todosNode.querySelectorAll("li input.checkbox")
     checkboxAll.forEach(item => item.checked ? item.parentNode.classList.toggle("bye") : !item.checked);
-    completeAllNode.checked = false;
-
-    ajax.delete(`/todos/completed`, _todos => {
+    ajax.delete(`/todos/completed`)
+    .then(_todos => {
       todos = _todos;
       this.SaveTodos();
-    });
+      completeAllNode.checked = false;
+    })
+    .catch(err => console.error(err));
     setTimeout(() => {
       checkboxAll.forEach(item => item.checked ? todosNode.removeChild(item.parentNode) : !item.checked);
     }, 1000)
   }
   SaveTodos() {
-    const { completeTodosNode, activeTodosNode } = this;
+    const { completeTodosNode, activeTodosNode, completeAllNode } = this;
+    completeAllNode.checked = todos.every(todo => todo.completed) ? true : false;
     completeTodosNode.textContent = todos.filter(todo => todo.completed ).length;
     activeTodosNode.textContent = todos.filter(todo => !todo.completed).length;
   }
